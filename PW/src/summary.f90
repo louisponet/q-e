@@ -84,6 +84,7 @@ SUBROUTINE summary()
   IF ( imix ==  0 ) mixing_style = 'plain'
   IF ( imix ==  1 ) mixing_style = 'TF'
   IF ( imix ==  2 ) mixing_style = 'local-TF'
+  IF ( imix ==  3 ) mixing_style = 'linear'
   !
   IF ( title /= ' ') WRITE( stdout, "(/,5X,'Title: ',/,5X,A75)" ) title
   !

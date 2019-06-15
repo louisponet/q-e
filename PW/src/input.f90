@@ -1089,6 +1089,8 @@ SUBROUTINE iosys()
      imix = 1
   CASE( 'local-TF' )
      imix = 2
+  CASE( 'linear' )
+	 imix = 3
   CASE( 'potential' )
      CALL errore( 'iosys', 'potential mixing no longer implemented', 1 )
   CASE DEFAULT
