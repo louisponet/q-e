@@ -55,7 +55,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
                              assign_scf_to_mix_type, assign_mix_to_scf_type, &
                              mix_type_AXPY, davcio_mix_type, rho_ddot, &
                              high_frequency_mixing, &
-                             mix_type_COPY, mix_type_SCAL
+                             mix_type_COPY, mix_type_SCAL, lin_mix_type_AXPY
   USE io_global,     ONLY : stdout
 #if defined(__GFORTRAN_HACK)
   USE mix_save
@@ -118,9 +118,9 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   !
   ngm0 = ngms
   !
-  mixrho_iter = iter
+!  mixrho_iter = iter
   !
-  IF ( n_iter > maxmix ) CALL errore( 'mix_rho', 'n_iter too big', 1 )
+!  IF ( n_iter > maxmix ) CALL errore( 'mix_rho', 'n_iter too big', 1 )
   !
   ! define mix_type variables and copy scf_type variables there
   !
@@ -129,12 +129,12 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   !
   call assign_scf_to_mix_type(rhoin, rhoin_m)
   call assign_scf_to_mix_type(input_rhout, rhout_m)
-
+  
   call mix_type_AXPY ( -1.d0, rhoin_m, rhout_m )
   !
   dr2 = rho_ddot( rhout_m, rhout_m, ngms )  !!!! this used to be ngm NOT ngms
   !
-  IF (dr2 < 0.0_DP) CALL errore('mix_rho','negative dr2',1)
+ ! IF (dr2 < 0.0_DP) CALL errore('mix_rho','negative dr2',1)
   !
   conv = ( dr2 < tr2 )
   !
@@ -159,152 +159,159 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
      !
      call destroy_mix_type(rhoin_m)
      call destroy_mix_type(rhout_m)
+
+	 write(stdout, *) 'no mixing'
  
      CALL stop_clock( 'mix_rho' )
      !
      RETURN
      !
   END IF
-  !
-  IF ( .NOT. ALLOCATED( df ) ) THEN
-     ALLOCATE( df( n_iter ) )
-     DO i=1,n_iter
-        CALL create_mix_type( df(i) )
-     END DO
-  END IF
-  IF ( .NOT. ALLOCATED( dv ) ) THEN
-     ALLOCATE( dv( n_iter ) )
-     DO i=1,n_iter
-        CALL create_mix_type( dv(i) )
-     END DO
-  END IF
+
+  call mix_type_AXPY ( 1.d0, rhoin_m, rhout_m )
+
+  call lin_mix_type_AXPY(alphamix, rhout_m, rhoin_m)
+ write(stdout, *) 'mixing'  
+ ! IF ( .NOT. ALLOCATED( df ) ) THEN
+ !    ALLOCATE( df( n_iter ) )
+ !    DO i=1,n_iter
+ !       CALL create_mix_type( df(i) )
+ !    END DO
+ ! END IF
+ ! IF ( .NOT. ALLOCATED( dv ) ) THEN
+ !    ALLOCATE( dv( n_iter ) )
+ !    DO i=1,n_iter
+ !       CALL create_mix_type( dv(i) )
+ !    END DO
+ ! END IF
   !
   ! ... iter_used = mixrho_iter-1  if  mixrho_iter <= n_iter
   ! ... iter_used = n_iter         if  mixrho_iter >  n_iter
   !
-  iter_used = MIN( ( mixrho_iter - 1 ), n_iter )
+  !iter_used = MIN( ( mixrho_iter - 1 ), n_iter )
   !
   ! ... ipos is the position in which results from the present iteration
   ! ... are stored. ipos=mixrho_iter-1 until ipos=n_iter, then back to 1,2,...
   !
-  ipos = mixrho_iter - 1 - ( ( mixrho_iter - 2 ) / n_iter ) * n_iter
+  !ipos = mixrho_iter - 1 - ( ( mixrho_iter - 2 ) / n_iter ) * n_iter
   !
-  IF ( mixrho_iter > 1 ) THEN
-     !
-     CALL davcio_mix_type( df(ipos), iunmix, 1, read_ )
-     CALL davcio_mix_type( dv(ipos), iunmix, 2, read_ )
-     !
-     call mix_type_AXPY ( -1.d0, rhout_m, df(ipos) )
-     call mix_type_AXPY ( -1.d0, rhoin_m, dv(ipos) )
+  !IF ( mixrho_iter > 1 ) THEN
+  !   !
+  !   CALL davcio_mix_type( df(ipos), iunmix, 1, read_ )
+  !   CALL davcio_mix_type( dv(ipos), iunmix, 2, read_ )
+  !   !
+  !   call mix_type_AXPY ( -1.d0, rhout_m, df(ipos) )
+  !   call mix_type_AXPY ( -1.d0, rhoin_m, dv(ipos) )
 #if defined(__NORMALIZE_BETAMIX)
      ! NORMALIZE
-     norm2 = rho_ddot( df(ipos), df(ipos), ngm0 )
-     obn = 1.d0/sqrt(norm2)
-     call mix_type_SCAL (obn,df(ipos))
-     call mix_type_SCAL (obn,dv(ipos))
+  !   norm2 = rho_ddot( df(ipos), df(ipos), ngm0 )
+  !   obn = 1.d0/sqrt(norm2)
+  !   call mix_type_SCAL (obn,df(ipos))
+  !   call mix_type_SCAL (obn,dv(ipos))
 #endif
      !
-  END IF
+  !END IF
   !
-  DO i = 1, iter_used
-     !
-     IF ( i /= ipos ) THEN
-        !
-        CALL davcio_mix_type( df(i), iunmix, 2*i+1, read_ )
-        CALL davcio_mix_type( dv(i), iunmix, 2*i+2, read_ )
-     END IF
-     !
-  END DO
+  !DO i = 1, iter_used
+  !   !
+  !   IF ( i /= ipos ) THEN
+  !      !
+  !      CALL davcio_mix_type( df(i), iunmix, 2*i+1, read_ )
+  !      CALL davcio_mix_type( dv(i), iunmix, 2*i+2, read_ )
+  !   END IF
+  !   !
+  !END DO
   !
-  CALL davcio_mix_type( rhout_m, iunmix, 1, write_ )
-  CALL davcio_mix_type( rhoin_m, iunmix, 2, write_ )
+  !CALL davcio_mix_type( rhout_m, iunmix, 1, write_ )
+  !CALL davcio_mix_type( rhoin_m, iunmix, 2, write_ )
+  !!
+  !IF ( mixrho_iter > 1 ) THEN
+  !   CALL davcio_mix_type( df(ipos), iunmix, 2*ipos+1, write_ )
+  !   CALL davcio_mix_type( dv(ipos), iunmix, 2*ipos+2, write_ )
+  !END IF
+  !!
+  !! Nothing else to do on first iteration
+  !skip_on_first: &
+  !IF (iter_used > 0) THEN
+  !  !
+  !  ALLOCATE(betamix(iter_used, iter_used)) !iter_used))
+  !  betamix = 0._dp
+  !  !
+  !  DO i = 1, iter_used
+  !      !
+  !      DO j = i, iter_used
+  !          !
+  !          betamix(i,j) = rho_ddot( df(j), df(i), ngm0 )
+  !          betamix(j,i) = betamix(i,j)
+  !          !
+  !      END DO
+  !      !
+  !  END DO
+  !  !
+  !  !   allocate(e(iter_used), v(iter_used, iter_used))
+  !  !   CALL rdiagh(iter_used, betamix, iter_used, e, v)
+  !  !   write(*,'(1e11.3)') e(:)
+  !  !   write(*,*)
+  !  !   deallocate(e,v)
+  !  allocate(work(iter_used), iwork(iter_used))
+  !  !write(*,*) betamix(:,:)
+  !  CALL DSYTRF( 'U', iter_used, betamix, iter_used, iwork, work, iter_used, info )
+  !  CALL errore( 'broyden', 'factorization', abs(info) )
+  !  !
+  !  CALL DSYTRI( 'U', iter_used, betamix, iter_used, iwork, work, info )
+  !  CALL errore( 'broyden', 'DSYTRI', abs(info) )    !
+  !  deallocate(iwork)
+  !  !
+  !  FORALL( i = 1:iter_used, &
+  !          j = 1:iter_used, j > i ) betamix(j,i) = betamix(i,j)
+  !  !
+  !  DO i = 1, iter_used
+  !      work(i) = rho_ddot( df(i), rhout_m, ngm0 )
+  !  END DO
+  !  !
+  !  DO i = 1, iter_used
+  !      !
+  !      gamma0 = DOT_PRODUCT( betamix(1:iter_used,i), work(1:iter_used) )
+  !      !
+  !      call mix_type_AXPY ( -gamma0, dv(i), rhoin_m )
+  !      call mix_type_AXPY ( -gamma0, df(i), rhout_m )
+  !      !
+  !  END DO
+  !  DEALLOCATE(betamix, work)
+  !  !
+  !  ! ... auxiliary vectors dv and df not needed anymore
+  !  !
+  !ENDIF skip_on_first
+  !!
+  !IF ( ALLOCATED( df ) ) THEN
+  !   DO i=1, n_iter
+  !      call destroy_mix_type(df(i))
+  !   END DO
+  !   DEALLOCATE( df )
+  !END IF
+  !IF ( ALLOCATED( dv ) ) THEN
+  !   DO i=1, n_iter
+  !      call destroy_mix_type(dv(i))
+  !   END DO
+  !   DEALLOCATE( dv )
+  !END IF
+  !!
+  !! ... preconditioning the new search direction
+  !!
+  !IF ( imix == 1 ) THEN
+  !   !
+  !   CALL approx_screening( rhout_m )
+  !   !
+  !ELSE IF ( imix == 2 ) THEN
+  !   !
+  !   CALL approx_screening2( rhout_m, rhoin_m )
+  !   !
+  !END IF
+  !!
+  !! ... set new trial density
   !
-  IF ( mixrho_iter > 1 ) THEN
-     CALL davcio_mix_type( df(ipos), iunmix, 2*ipos+1, write_ )
-     CALL davcio_mix_type( dv(ipos), iunmix, 2*ipos+2, write_ )
-  END IF
-  !
-  ! Nothing else to do on first iteration
-  skip_on_first: &
-  IF (iter_used > 0) THEN
-    !
-    ALLOCATE(betamix(iter_used, iter_used)) !iter_used))
-    betamix = 0._dp
-    !
-    DO i = 1, iter_used
-        !
-        DO j = i, iter_used
-            !
-            betamix(i,j) = rho_ddot( df(j), df(i), ngm0 )
-            betamix(j,i) = betamix(i,j)
-            !
-        END DO
-        !
-    END DO
-    !
-    !   allocate(e(iter_used), v(iter_used, iter_used))
-    !   CALL rdiagh(iter_used, betamix, iter_used, e, v)
-    !   write(*,'(1e11.3)') e(:)
-    !   write(*,*)
-    !   deallocate(e,v)
-    allocate(work(iter_used), iwork(iter_used))
-    !write(*,*) betamix(:,:)
-    CALL DSYTRF( 'U', iter_used, betamix, iter_used, iwork, work, iter_used, info )
-    CALL errore( 'broyden', 'factorization', abs(info) )
-    !
-    CALL DSYTRI( 'U', iter_used, betamix, iter_used, iwork, work, info )
-    CALL errore( 'broyden', 'DSYTRI', abs(info) )    !
-    deallocate(iwork)
-    !
-    FORALL( i = 1:iter_used, &
-            j = 1:iter_used, j > i ) betamix(j,i) = betamix(i,j)
-    !
-    DO i = 1, iter_used
-        work(i) = rho_ddot( df(i), rhout_m, ngm0 )
-    END DO
-    !
-    DO i = 1, iter_used
-        !
-        gamma0 = DOT_PRODUCT( betamix(1:iter_used,i), work(1:iter_used) )
-        !
-        call mix_type_AXPY ( -gamma0, dv(i), rhoin_m )
-        call mix_type_AXPY ( -gamma0, df(i), rhout_m )
-        !
-    END DO
-    DEALLOCATE(betamix, work)
-    !
-    ! ... auxiliary vectors dv and df not needed anymore
-    !
-  ENDIF skip_on_first
-  !
-  IF ( ALLOCATED( df ) ) THEN
-     DO i=1, n_iter
-        call destroy_mix_type(df(i))
-     END DO
-     DEALLOCATE( df )
-  END IF
-  IF ( ALLOCATED( dv ) ) THEN
-     DO i=1, n_iter
-        call destroy_mix_type(dv(i))
-     END DO
-     DEALLOCATE( dv )
-  END IF
-  !
-  ! ... preconditioning the new search direction
-  !
-  IF ( imix == 1 ) THEN
-     !
-     CALL approx_screening( rhout_m )
-     !
-  ELSE IF ( imix == 2 ) THEN
-     !
-     CALL approx_screening2( rhout_m, rhoin_m )
-     !
-  END IF
-  !
-  ! ... set new trial density
-  !
-  call mix_type_AXPY ( alphamix, rhout_m, rhoin_m )
+
+  !call mix_type_AXPY ( alphamix, rhout_m, rhoin_m )
   ! ... simple mixing for high_frequencies (and set to zero the smooth ones)
   call high_frequency_mixing ( rhoin, input_rhout, alphamix )
   ! ... add the mixed rho for the smooth frequencies

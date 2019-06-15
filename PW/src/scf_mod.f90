@@ -273,6 +273,25 @@ CONTAINS
   !
   RETURN
  END SUBROUTINE mix_type_AXPY
+ !----------------------------------------------------------------------------
+ subroutine lin_mix_type_AXPY (A,X,Y)
+  !----------------------------------------------------------------------------
+  ! works like daxpy for scf_type variables :  Y = A * X + Y
+  ! NB: A is a REAL(DP) number
+  USE kinds, ONLY : DP
+  IMPLICIT NONE
+  REAL(DP)                      :: A
+  TYPE(mix_type), INTENT(IN)    :: X
+  TYPE(mix_type), INTENT(INOUT) :: Y
+                               Y%of_g      = (1 - A) * Y%of_g      + A * X%of_g
+  if (dft_is_meta() .or. lxdm) Y%kin_g     = (1 - A) * Y%kin_g     + A * X%kin_g
+  if (lda_plus_u_nc)           Y%ns_nc     = (1 - A) * Y%ns_nc     + A * X%ns_nc
+  if (lda_plus_u_co)           Y%ns        = (1 - A) * Y%ns        + A * X%ns
+  if (okpaw)                   Y%bec       = (1 - A) * Y%bec       + A * X%bec
+  if (dipfield)                Y%el_dipole = (1 - A) * Y%el_dipole + A * X%el_dipole
+  !
+  RETURN
+ END SUBROUTINE lin_mix_type_AXPY
  !
  !----------------------------------------------------------------------------
  subroutine mix_type_COPY (X,Y)
